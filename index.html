@@ -89,6 +89,12 @@
           <div class="mt-1 font-medium text-slate-700">ESH/ESC 2023</div>
         </div>
       </div>
+
+      <!-- Nota de corrección de reloj -->
+      <div class="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+        <span><strong>Corrección de reloj aplicada (+12 h):</strong> el monitor registró la hora con AM/PM invertido. Las horas mostradas y la clasificación día/noche son las <strong>reales</strong> (inicio ≈ 15:31, retiro ≈ 14:30). Entre paréntesis se indica la hora original del equipo.</span>
+      </div>
     </header>
 
     <!-- ================= KPI: PROMEDIOS ================= -->
@@ -314,6 +320,21 @@
 ]`;
 
   // =========================================================================
+  //  CORRECCIÓN DE RELOJ
+  //  El monitor registró la hora con AM/PM invertido (desfase de 12 h).
+  //  Verificado: inicio real ≈ 15:31 (tarde) y retiro real ≈ 14:30 (tarde).
+  //  Se suma este desfase para clasificar día/noche y mostrar la hora real.
+  // =========================================================================
+  const CLOCK_OFFSET_HOURS = 12;
+
+  // Desplaza "HH:MM" por el desfase y devuelve la hora real "HH:MM".
+  function shiftTime(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const rh = (((h + CLOCK_OFFSET_HOURS) % 24) + 24) % 24;
+    return String(rh).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  // =========================================================================
   //  PROCESADOR CON FILTRO BLINDADO
   // =========================================================================
   const readings = [];
@@ -352,12 +373,16 @@
     // Filtro 6: valores fuera de rango fisiológico plausible
     if (!(sys > 40 && sys < 300 && dia > 20 && dia < 200)) return;
 
-    const hourNum = parseInt(hora.split(':')[0], 10);
-    // Diurno 07:00–21:59  |  Nocturno 22:00–06:59
+    // Hora real corregida por el desfase del reloj del equipo
+    const horaReal = shiftTime(hora);
+    const hourNum = parseInt(horaReal.split(':')[0], 10);
+    // Diurno 07:00–21:59  |  Nocturno 22:00–06:59 (sobre la hora REAL)
     const isDay = hourNum >= 7 && hourNum < 22;
 
     readings.push({
-      hora, fecha, sys, dia,
+      hora: horaReal,                  // hora real (mostrada en gráficos)
+      horaEquipo: hora,                // hora original registrada por el monitor
+      fecha, sys, dia,
       hr: Number.isFinite(hr) ? hr : null,
       pam: dia + (sys - dia) / 3,     // Presión Arterial Media
       pp: sys - dia,                   // Presión de Pulso
@@ -418,7 +443,12 @@
   $('avgNightBP').textContent = `${round(stats.night.sys)}/${round(stats.night.dia)}`;
   $('avgNightHR').textContent = round(stats.night.hr);
 
-  $('studyDate').textContent = readings.length ? `${readings[0].fecha} → ${readings[readings.length - 1].fecha}` : '—';
+  if (readings.length) {
+    const first = readings[0], last = readings[readings.length - 1];
+    $('studyDate').textContent = `${first.fecha} ${first.hora} → ${last.fecha} ${last.hora} (real)`;
+  } else {
+    $('studyDate').textContent = '—';
+  }
   $('readCount').textContent = `${readings.length} / ${totalNonHeaderLines}`;
 
   function setLoad(barId, txtId, value) {
@@ -484,7 +514,10 @@
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } },
-        tooltip: { callbacks: { title: (i) => 'Hora ' + i[0].label } }
+        tooltip: { callbacks: { title: (i) => {
+          const r = readings[i[0].dataIndex];
+          return `Hora real ${r.hora}  (equipo ${r.horaEquipo})`;
+        } } }
       },
       scales: {
         y: { grid: { color: '#f1f5f9' }, title: { display: true, text: 'mmHg' }, suggestedMin: 60 },

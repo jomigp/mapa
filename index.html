@@ -36,17 +36,18 @@
 
   <!-- Botón flotante Exportar (solo web) -->
   <button onclick="window.print()"
-    class="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-95">
+    class="no-print fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 sm:px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-95">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
     </svg>
-    Exportar a PDF
+    <span class="hidden sm:inline">Exportar a PDF</span>
+    <span class="sm:hidden">PDF</span>
   </button>
 
-  <main class="mx-auto max-w-6xl px-4 py-8 print:py-0">
+  <main class="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8 print:py-0">
 
     <!-- ================= CABECERA ================= -->
-    <header class="print-card mb-6 rounded-2xl bg-white p-6 shadow-sm">
+    <header class="print-card mb-4 sm:mb-6 rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
       <div class="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-widest text-blue-600">Monitoreo Ambulatorio de Presión Arterial</p>
@@ -64,15 +65,15 @@
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Paciente</label>
-          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">Nombre del Paciente</div>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">Vladimir González</div>
         </div>
         <div>
           <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Cédula</label>
-          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">V-00.000.000</div>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">V-7.070.707</div>
         </div>
         <div>
           <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Edad / Sexo</label>
-          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">00 años / M</div>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">64 años / M</div>
         </div>
       </div>
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3 text-sm">
@@ -98,7 +99,7 @@
     </header>
 
     <!-- ================= KPI: PROMEDIOS ================= -->
-    <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 print-grid-2">
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3 print-grid-2">
       <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-slate-500">Promedio Global 24H</p>
@@ -126,7 +127,7 @@
     </section>
 
     <!-- ================= CARGA + DIPPING ================= -->
-    <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3 print-grid-2">
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 print-grid-2">
       <!-- Carga diurna -->
       <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
         <p class="text-sm font-semibold text-slate-500">Carga Hipertensiva Diurna</p>
@@ -169,7 +170,7 @@
     </section>
 
     <!-- ================= GRÁFICOS PRINCIPALES ================= -->
-    <section class="mb-6 grid grid-cols-1 gap-4">
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4">
       <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
         <div class="mb-3 flex items-center justify-between">
           <div>
@@ -181,7 +182,7 @@
       </div>
     </section>
 
-    <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 print-break-before">
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 print-break-before">
       <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
         <h2 class="text-base font-bold text-slate-900">Perfil Hemodinámico</h2>
         <p class="mb-3 text-xs text-slate-400">Presión Arterial Media (PAM) y Presión de Pulso (PP)</p>
@@ -194,7 +195,7 @@
       </div>
     </section>
 
-    <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
       <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
         <h2 class="text-base font-bold text-slate-900">Distribución de Severidad Sistólica</h2>
         <p class="mb-3 text-xs text-slate-400">Clasificación de tomas válidas (mmHg)</p>
@@ -211,7 +212,7 @@
     </section>
 
     <!-- ================= CONCLUSIONES ================= -->
-    <section class="print-card print-break-before rounded-2xl bg-white p-6 shadow-sm">
+    <section class="print-card print-break-before rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
       <h2 class="text-base font-bold text-slate-900">Conclusiones Médicas</h2>
       <div contenteditable="true"
         class="mt-3 min-h-[140px] rounded-xl border border-dashed border-slate-200 p-4 text-sm leading-relaxed text-slate-700 focus:border-blue-400">

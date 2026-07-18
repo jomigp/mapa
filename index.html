@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Clínico MAPA 24H</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    [contenteditable="true"] { outline: none; border-bottom: 1px dashed #cbd5e1; transition: border-color .15s ease; }
+    [contenteditable="true"]:hover { border-bottom-color: #94a3b8; }
+    [contenteditable="true"]:focus { border-bottom-color: #2563eb; background: #eff6ff; }
+
+    /* ---------- Impresión (Print-Ready A4 / Carta) ---------- */
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      html, body { background: #ffffff !important; }
+      .no-print { display: none !important; }
+      .print-card {
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .print-break-before { break-before: page; page-break-before: always; }
+      .chart-box { break-inside: avoid; page-break-inside: avoid; }
+      [contenteditable="true"] { border-bottom: none !important; background: transparent !important; }
+      main { max-width: 100% !important; padding: 0 !important; }
+      .print-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+  <!-- Botón flotante Exportar (solo web) -->
+  <button onclick="window.print()"
+    class="no-print fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 sm:px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-95">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+    </svg>
+    <span class="hidden sm:inline">Exportar a PDF</span>
+    <span class="sm:hidden">PDF</span>
+  </button>
+
+  <main class="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8 print:py-0">
+
+    <!-- ================= CABECERA ================= -->
+    <header class="print-card mb-4 sm:mb-6 rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
+      <div class="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-blue-600">Monitoreo Ambulatorio de Presión Arterial</p>
+          <h1 class="mt-1 text-2xl font-bold text-slate-900">Informe MAPA · 24 Horas</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="rounded-xl bg-blue-50 p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Paciente</label>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">Vladimir González</div>
+        </div>
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Cédula</label>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">V-7.070.707</div>
+        </div>
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-slate-400">Edad / Sexo</label>
+          <div contenteditable="true" class="mt-1 text-base font-semibold text-slate-900">64 años / M</div>
+        </div>
+      </div>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3 text-sm">
+        <div>
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Fecha del estudio</span>
+          <div class="mt-1 font-medium text-slate-700" id="studyDate">—</div>
+        </div>
+        <div>
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Tomas válidas / totales</span>
+          <div class="mt-1 font-medium text-slate-700" id="readCount">—</div>
+        </div>
+        <div>
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Referencia</span>
+          <div class="mt-1 font-medium text-slate-700">ESH/ESC 2023</div>
+        </div>
+      </div>
+
+      <!-- Nota de corrección de reloj -->
+      <div class="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+        <span><strong>Corrección de reloj aplicada (+12 h):</strong> el monitor registró la hora con AM/PM invertido. Todas las horas mostradas y la clasificación día/noche son las <strong>reales</strong> (inicio ≈ 15:31, retiro ≈ 14:30).</span>
+      </div>
+    </header>
+
+    <!-- ================= KPI: PROMEDIOS ================= -->
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3 print-grid-2">
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-slate-500">Promedio Global 24H</p>
+          <span class="h-2.5 w-2.5 rounded-full bg-slate-400"></span>
+        </div>
+        <p class="mt-2 text-3xl font-bold text-slate-900"><span id="avgGlobalBP">—</span> <span class="text-lg font-medium text-slate-400">mmHg</span></p>
+        <p class="mt-1 text-sm text-slate-500">FC media: <span id="avgGlobalHR" class="font-semibold text-slate-700">—</span> bpm</p>
+      </div>
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-amber-600">Período Diurno</p>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+        </div>
+        <p class="mt-2 text-3xl font-bold text-slate-900"><span id="avgDayBP">—</span> <span class="text-lg font-medium text-slate-400">mmHg</span></p>
+        <p class="mt-1 text-sm text-slate-500">07:00–21:59 · FC <span id="avgDayHR" class="font-semibold text-slate-700">—</span> bpm</p>
+      </div>
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-indigo-600">Período Nocturno</p>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+        </div>
+        <p class="mt-2 text-3xl font-bold text-slate-900"><span id="avgNightBP">—</span> <span class="text-lg font-medium text-slate-400">mmHg</span></p>
+        <p class="mt-1 text-sm text-slate-500">22:00–06:59 · FC <span id="avgNightHR" class="font-semibold text-slate-700">—</span> bpm</p>
+      </div>
+    </section>
+
+    <!-- ================= CARGA + DIPPING ================= -->
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 print-grid-2">
+      <!-- Carga diurna -->
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm font-semibold text-slate-500">Carga Hipertensiva Diurna</p>
+        <p class="text-xs text-slate-400">Umbral &gt; 135/85 mmHg</p>
+        <div class="mt-3 space-y-3">
+          <div>
+            <div class="flex justify-between text-xs text-slate-500"><span>Sistólica</span><span id="loadDaySysTxt" class="font-semibold">—</span></div>
+            <div class="mt-1 h-2 w-full rounded-full bg-slate-100"><div id="loadDaySysBar" class="h-2 rounded-full bg-red-500" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs text-slate-500"><span>Diastólica</span><span id="loadDayDiaTxt" class="font-semibold">—</span></div>
+            <div class="mt-1 h-2 w-full rounded-full bg-slate-100"><div id="loadDayDiaBar" class="h-2 rounded-full bg-blue-500" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Carga nocturna -->
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm font-semibold text-slate-500">Carga Hipertensiva Nocturna</p>
+        <p class="text-xs text-slate-400">Umbral &gt; 120/70 mmHg</p>
+        <div class="mt-3 space-y-3">
+          <div>
+            <div class="flex justify-between text-xs text-slate-500"><span>Sistólica</span><span id="loadNightSysTxt" class="font-semibold">—</span></div>
+            <div class="mt-1 h-2 w-full rounded-full bg-slate-100"><div id="loadNightSysBar" class="h-2 rounded-full bg-red-500" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs text-slate-500"><span>Diastólica</span><span id="loadNightDiaTxt" class="font-semibold">—</span></div>
+            <div class="mt-1 h-2 w-full rounded-full bg-slate-100"><div id="loadNightDiaBar" class="h-2 rounded-full bg-blue-500" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Dipping -->
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <p class="text-sm font-semibold text-slate-500">Patrón Dipping (Sistólico)</p>
+        <p class="text-xs text-slate-400">Descenso nocturno de PAS</p>
+        <div class="mt-3 flex items-end gap-3">
+          <p class="text-4xl font-bold text-slate-900"><span id="dippingValue">—</span><span class="text-xl text-slate-400">%</span></p>
+        </div>
+        <span id="dippingBadge" class="mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">—</span>
+      </div>
+    </section>
+
+    <!-- ================= GRÁFICOS PRINCIPALES ================= -->
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4">
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Tendencia PA vs Tiempo · 24H</h2>
+            <p class="text-xs text-slate-400">Sistólica / Diastólica con rango, frecuencia cardíaca y umbrales día/noche</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#dc2626"></span>Sistólica</span>
+            <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#2563eb"></span>Diastólica</span>
+            <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#9333ea"></span>FC</span>
+            <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-sm" style="background:#cbd5e1"></span>Noche</span>
+            <span class="flex items-center gap-1.5"><span class="inline-block h-0 w-4 border-t-2 border-dashed" style="border-color:#f59e0b"></span>Umbral</span>
+          </div>
+        </div>
+        <div class="relative h-80"><canvas id="chartBP"></canvas></div>
+      </div>
+    </section>
+
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 print-break-before">
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Perfil Hemodinámico</h2>
+        <p class="mb-3 text-xs text-slate-400">Presión Arterial Media (PAM) y Presión de Pulso (PP)</p>
+        <div class="relative h-64"><canvas id="chartHemo"></canvas></div>
+      </div>
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Variabilidad Estructural</h2>
+        <p class="mb-3 text-xs text-slate-400">Dispersión Sistólica (Y) vs Diastólica (X)</p>
+        <div class="relative h-64"><canvas id="chartScatter"></canvas></div>
+      </div>
+    </section>
+
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Distribución de Severidad Sistólica</h2>
+        <p class="mb-3 text-xs text-slate-400">Clasificación de tomas válidas (mmHg)</p>
+        <div class="relative mx-auto h-64 max-w-xs"><canvas id="chartDist"></canvas></div>
+      </div>
+      <div class="print-card rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-base font-bold text-slate-900">Resumen de Distribución</h2>
+        <div class="space-y-2" id="distLegend"></div>
+        <div class="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+          <p class="font-semibold text-slate-700">Interpretación automática</p>
+          <p id="autoInterpret" class="mt-1 leading-relaxed">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= HISTOGRAMAS ================= -->
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 print-break-before">
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Histograma Sistólica</h2>
+        <p class="mb-3 text-xs text-slate-400">Distribución por rangos (mmHg)</p>
+        <div class="relative h-56"><canvas id="chartHistSys"></canvas></div>
+      </div>
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Histograma Diastólica</h2>
+        <p class="mb-3 text-xs text-slate-400">Distribución por rangos (mmHg)</p>
+        <div class="relative h-56"><canvas id="chartHistDia"></canvas></div>
+      </div>
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Histograma Frec. Pulso</h2>
+        <p class="mb-3 text-xs text-slate-400">Distribución por rangos (lpm)</p>
+        <div class="relative h-56"><canvas id="chartHistHr"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ================= TORTAS ENCIMA/NORMAL/BAJO ================= -->
+    <section class="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 print-break-before">
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Sistólica</h2>
+        <p class="mb-2 text-xs text-slate-400">Umbral 100–135 mmHg</p>
+        <div class="relative mx-auto h-44 max-w-[220px]"><canvas id="chartPieSys"></canvas></div>
+        <div id="pieSysStats" class="mt-3 text-xs text-slate-600"></div>
+        <div id="pieSysLegend" class="mt-2 space-y-1 text-xs"></div>
+      </div>
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Diastólica</h2>
+        <p class="mb-2 text-xs text-slate-400">Umbral 60–85 mmHg</p>
+        <div class="relative mx-auto h-44 max-w-[220px]"><canvas id="chartPieDia"></canvas></div>
+        <div id="pieDiaStats" class="mt-3 text-xs text-slate-600"></div>
+        <div id="pieDiaLegend" class="mt-2 space-y-1 text-xs"></div>
+      </div>
+      <div class="print-card chart-box rounded-2xl bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Frec. Pulso</h2>
+        <p class="mb-2 text-xs text-slate-400">Umbral 60–100 lpm</p>
+        <div class="relative mx-auto h-44 max-w-[220px]"><canvas id="chartPieHr"></canvas></div>
+        <div id="pieHrStats" class="mt-3 text-xs text-slate-600"></div>
+        <div id="pieHrLegend" class="mt-2 space-y-1 text-xs"></div>
+      </div>
+    </section>
+
+    <!-- ================= TABLA DE DATOS ================= -->
+    <section class="print-card print-break-before mb-4 sm:mb-6 rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-base font-bold text-slate-900">Datos de las Tomas</h2>
+        <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-sm bg-red-100"></span>Sobre umbral (↑)</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-sm bg-slate-200"></span>Nocturna</span>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[520px] border-collapse text-right text-xs">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-500">
+              <th class="px-2 py-2 text-left font-semibold">#</th>
+              <th class="px-2 py-2 text-left font-semibold">Fecha</th>
+              <th class="px-2 py-2 text-left font-semibold">Hora</th>
+              <th class="px-2 py-2 font-semibold">Sis</th>
+              <th class="px-2 py-2 font-semibold">Dia</th>
+              <th class="px-2 py-2 font-semibold">PAM</th>
+              <th class="px-2 py-2 font-semibold">PP</th>
+              <th class="px-2 py-2 font-semibold">FC</th>
+            </tr>
+          </thead>
+          <tbody id="dataTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= CONCLUSIONES ================= -->
+    <section class="print-card print-break-before rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
+      <h2 class="text-base font-bold text-slate-900">Conclusiones Médicas</h2>
+      <div contenteditable="true"
+        class="mt-3 min-h-[140px] rounded-xl border border-dashed border-slate-200 p-4 text-sm leading-relaxed text-slate-700 focus:border-blue-400">
+        Escriba aquí la interpretación clínica, hallazgos relevantes, correlación con la clínica del paciente y las recomendaciones terapéuticas...
+      </div>
+
+      <div class="mt-10 flex flex-col items-end">
+        <div class="w-64 border-t border-slate-400 pt-2 text-center">
+          <div contenteditable="true" class="text-sm font-semibold text-slate-900">Dr. José Miguel</div>
+          <p class="text-xs text-slate-400">Médico Tratante</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="no-print mt-6 text-center text-xs text-slate-400">
+      Documento generado automáticamente · Los campos con línea punteada son editables antes de imprimir.
+    </p>
+  </main>
+
+  <script>
+  // =========================================================================
+  //  DATOS CRUDOS (CSV) — procesados en tiempo real
+  // =========================================================================
+  const RAW_DATA = `
+[Número, Hora, Fecha, PA(mmHg), FP(bpm), PAM(mmHg), PP(mmHg), SpO2(%), TC, Coment,
+1,03:31,16-07-2026,136/92,81,113,44,---,0(1),
+2,04:00,16-07-2026,141/92,68,108,49,---,0(1),
+3,04:30,16-07-2026,147/98,65,112,49,---,0(1),
+4,05:00,16-07-2026,144/96,71,110,48,---,0(1),
+5,05:30,16-07-2026,143/92,68,107,51,---,0(1),
+6,06:00,16-07-2026,139/92,68,109,47,---,0(1),
+7,06:30,16-07-2026,148/98,69,124,50,---,0(1),
+8,07:00,16-07-2026,142/90,65,110,52,---,0(1),
+9,07:15,16-07-2026,146/92,67,106,54,---,0(1),
+10,07:30,16-07-2026,147/96,67,126,51,---,0(1),
+11,07:45,16-07-2026,159/97,71,118,62,---,0(1),
+12,08:00,16-07-2026,150/96,67,113,54,---,0(1),
+13,08:15,16-07-2026,154/94,63,116,60,---,0(1),
+14,08:31,16-07-2026,153/100,72,115,53,---,0(1),
+15,08:46,16-07-2026,168/124,81,149,44,---,0(1),
+16,09:00,16-07-2026,158/102,73,120,56,---,0(1),
+17,09:16,16-07-2026,148/108,68,119,40,---,0(1),
+18,09:30,16-07-2026,134/84,66,103,50,---,0(1),
+19,09:45,16-07-2026,137/85,68,99,52,---,0(1),
+20,10:00,16-07-2026,132/86,66,99,46,---,0(1),
+21,10:15,16-07-2026,143/90,62,105,53,---,0(1),
+22,10:30,16-07-2026,140/81,62,103,59,---,0(1),
+23,10:45,16-07-2026,131/86,60,98,45,---,0(1),
+24,11:00,16-07-2026,152/93,59,109,59,---,0(1),
+25,11:15,16-07-2026,135/80,58,103,55,---,0(1),
+26,11:30,16-07-2026,154/94,68,111,60,---,0(1),
+27,11:45,16-07-2026,154/86,62,114,68,---,0(1),
+28,12:00,16-07-2026,140/83,59,97,57,---,0(1),
+29,12:15,16-07-2026,141/88,60,106,53,---,0(1),
+30,12:30,16-07-2026,142/90,65,105,52,---,0(1),
+31,12:45,16-07-2026,138/89,60,106,49,---,0(1),
+32,13:00,16-07-2026,139/89,58,108,50,---,0(1),
+33,13:15,16-07-2026,136/92,61,107,44,---,0(1),
+34,13:30,16-07-2026,129/85,74,100,44,---,0(1),
+35,13:45,16-07-2026,141/85,55,109,56,---,0(1),
+36,14:00,16-07-2026,143/95,61,112,48,---,0(1),
+37,14:15,16-07-2026,137/92,64,110,45,---,0(1),
+38,14:30,16-07-2026,137/79,57,106,58,---,0(1),
+39,14:45,16-07-2026,138/91,66,104,47,---,0(1),
+40,15:00,16-07-2026,131/77,58,96,54,---,0(1),
+41,15:15,16-07-2026,145/86,54,100,59,---,0(1),
+42,15:30,16-07-2026,160/94,58,112,66,---,0(1),
+43,15:45,16-07-2026,138/85,54,99,53,---,0(1),
+44,16:00,16-07-2026,136/86,55,109,50,---,0(1),
+45,16:15,16-07-2026,147/97,60,116,50,---,0(1),
+46,16:30,16-07-2026,135/87,55,104,48,---,0(1),
+47,16:45,16-07-2026,144/89,56,115,55,---,0(1),
+48,17:00,16-07-2026,161/95,61,109,66,---,0(1),
+49,17:15,16-07-2026,147/87,58,125,60,---,0(1),
+50,17:30,16-07-2026,150/92,57,108,58,---,0(1),
+51,17:45,16-07-2026,148/90,56,109,58,---,0(1),
+52,18:00,16-07-2026,155/95,62,110,60,---,0(1),
+53,18:15,16-07-2026,160/101,61,121,59,---,0(1),
+54,18:30,16-07-2026,150/99,67,117,51,---,0(1),
+55,18:45,16-07-2026,154/103,71,121,51,---,0(1),
+56,19:00,16-07-2026,143/102,74,115,41,---,0(1),
+57,19:16,16-07-2026,170/109,80,144,61,---,0(1),
+58,19:30,16-07-2026,150/96,67,125,54,---,0(1),
+59,19:45,16-07-2026,144/98,70,111,46,---,0(1),
+60,20:00,16-07-2026,138/103,70,114,35,---,0(1),
+61,20:15,16-07-2026,147/99,76,118,48,---,0(1),
+62,20:30,16-07-2026,144/99,76,121,45,---,0(1),
+63,20:45,16-07-2026,140/102,71,115,38,---,0(1),
+64,21:00,16-07-2026,145/94,60,108,51,---,0(1),
+65,21:16,16-07-2026,---/---,---,---,---,---,6(1),Manguito suelto
+66++,21:20,16-07-2026,202/168,78,180,34,---,0(1),
+67,21:32,16-07-2026,198/131,79,146,67,---,0(1),
+68,21:45,16-07-2026,151/102,72,118,49,---,0(1),
+69,22:00,16-07-2026,143/105,80,117,38,---,0(1),
+70,22:30,16-07-2026,127/74,67,90,53,---,0(1),
+71,23:00,16-07-2026,---/---,---,---,---,---,8(1),Error de presión de aire
+72++,23:02,16-07-2026,---/---,---,---,---,---,11(1),Movimiento rebasado
+73++,23:06,16-07-2026,163/111,92,133,52,---,0(1),
+74,23:31,16-07-2026,132/98,76,107,34,---,0(1),
+75,00:01,17-07-2026,139/83,80,105,56,---,0(1),
+76,00:30,17-07-2026,139/87,70,102,52,---,0(1),
+77,01:01,17-07-2026,156/97,79,109,59,---,0(1),
+78,01:30,17-07-2026,148/111,87,123,37,---,0(1),
+79,02:00,17-07-2026,143/97,79,108,46,---,0(1),
+80,02:30,17-07-2026,153/99,87,118,54,---,0(1),
+]`;
+
+  // =========================================================================
+  //  CORRECCIÓN DE RELOJ
+  //  El monitor registró la hora con AM/PM invertido (desfase de 12 h).
+  //  Verificado: inicio real ≈ 15:31 (tarde) y retiro real ≈ 14:30 (tarde).
+  //  Se suma este desfase para clasificar día/noche y mostrar la hora real.
+  // =========================================================================
+  const CLOCK_OFFSET_HOURS = 12;
+
+  // Desplaza "HH:MM" por el desfase y devuelve la hora real "HH:MM".
+  function shiftTime(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const rh = (((h + CLOCK_OFFSET_HOURS) % 24) + 24) % 24;
+    return String(rh).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  // =========================================================================
+  //  PROCESADOR CON FILTRO BLINDADO
+  // =========================================================================
+  const readings = [];
+  let totalNonHeaderLines = 0;
+
+  RAW_DATA.split('\n').forEach((rawLine) => {
+    // Limpieza de corchetes y espacios
+    const line = rawLine.replace(/[\[\]]/g, '').trim();
+
+    // Filtro 1: líneas vacías
+    if (!line) return;
+
+    const cols = line.split(',');
+
+    // Filtro 2: columnas insuficientes (necesitamos al menos hasta PP)
+    if (cols.length < 7) return;
+
+    const hora = (cols[1] || '').trim();
+    const fecha = (cols[2] || '').trim();
+    const pa = (cols[3] || '').trim();
+
+    // Filtro 3: texto de cabecera (no empieza con dígito en la 1ª columna)
+    if (!/^\d/.test((cols[0] || '').trim())) return;
+
+    // Filtro 4: hora inválida
+    if (!/^\d{1,2}:\d{2}$/.test(hora)) return;
+
+    totalNonHeaderLines++;
+
+    // Filtro 5: lecturas fallidas "---/---" o formato PA inválido
+    if (!/^\d{2,3}\/\d{2,3}$/.test(pa)) return;
+
+    const [sys, dia] = pa.split('/').map(Number);
+    const hr = parseInt(cols[4], 10);
+
+    // Filtro 6: valores fuera de rango fisiológico plausible
+    if (!(sys > 40 && sys < 300 && dia > 20 && dia < 200)) return;
+
+    // Hora real corregida por el desfase del reloj del equipo
+    const horaReal = shiftTime(hora);
+    const hourNum = parseInt(horaReal.split(':')[0], 10);
+    // Diurno 07:00–21:59  |  Nocturno 22:00–06:59 (sobre la hora REAL)
+    const isDay = hourNum >= 7 && hourNum < 22;
+
+    readings.push({
+      hora: horaReal,                  // hora real (mostrada en gráficos)
+      horaEquipo: hora,                // hora original registrada por el monitor
+      fecha, sys, dia,
+      hr: Number.isFinite(hr) ? hr : null,
+      pam: dia + (sys - dia) / 3,     // Presión Arterial Media
+      pp: sys - dia,                   // Presión de Pulso
+      period: isDay ? 'day' : 'night'
+    });
+  });
+
+  // =========================================================================
+  //  CÁLCULOS CLÍNICOS
+  // =========================================================================
+  const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  const round = (n) => Math.round(n);
+
+  const dayR = readings.filter(r => r.period === 'day');
+  const nightR = readings.filter(r => r.period === 'night');
+
+  const stats = {
+    global: { sys: avg(readings.map(r => r.sys)), dia: avg(readings.map(r => r.dia)), hr: avg(readings.filter(r => r.hr).map(r => r.hr)) },
+    day:    { sys: avg(dayR.map(r => r.sys)), dia: avg(dayR.map(r => r.dia)), hr: avg(dayR.filter(r => r.hr).map(r => r.hr)) },
+    night:  { sys: avg(nightR.map(r => r.sys)), dia: avg(nightR.map(r => r.dia)), hr: avg(nightR.filter(r => r.hr).map(r => r.hr)) }
+  };
+
+  // Carga hipertensiva (% de tomas por encima del umbral)
+  const pct = (count, total) => total ? (count / total) * 100 : 0;
+  const load = {
+    daySys:   pct(dayR.filter(r => r.sys > 135).length, dayR.length),
+    dayDia:   pct(dayR.filter(r => r.dia > 85).length, dayR.length),
+    nightSys: pct(nightR.filter(r => r.sys > 120).length, nightR.length),
+    nightDia: pct(nightR.filter(r => r.dia > 70).length, nightR.length)
+  };
+
+  // Patrón Dipping (sistólico)
+  const dipping = stats.day.sys ? ((stats.day.sys - stats.night.sys) / stats.day.sys) * 100 : 0;
+  function classifyDipping(d) {
+    if (d > 20)  return { label: 'Extreme Dipper', cls: 'bg-indigo-100 text-indigo-700' };
+    if (d >= 10) return { label: 'Dipper Normal',  cls: 'bg-emerald-100 text-emerald-700' };
+    if (d >= 0)  return { label: 'Non-Dipper',     cls: 'bg-amber-100 text-amber-700' };
+    return { label: 'Riser', cls: 'bg-red-100 text-red-700' };
+  }
+
+  // Distribución de severidad sistólica
+  const dist = {
+    normal: readings.filter(r => r.sys < 120).length,
+    pre:    readings.filter(r => r.sys >= 120 && r.sys <= 139).length,
+    g1:     readings.filter(r => r.sys >= 140 && r.sys <= 159).length,
+    g2:     readings.filter(r => r.sys >= 160).length
+  };
+
+  // =========================================================================
+  //  RENDER DE MÉTRICAS
+  // =========================================================================
+  const $ = (id) => document.getElementById(id);
+
+  $('avgGlobalBP').textContent = `${round(stats.global.sys)}/${round(stats.global.dia)}`;
+  $('avgGlobalHR').textContent = round(stats.global.hr);
+  $('avgDayBP').textContent = `${round(stats.day.sys)}/${round(stats.day.dia)}`;
+  $('avgDayHR').textContent = round(stats.day.hr);
+  $('avgNightBP').textContent = `${round(stats.night.sys)}/${round(stats.night.dia)}`;
+  $('avgNightHR').textContent = round(stats.night.hr);
+
+  if (readings.length) {
+    const first = readings[0], last = readings[readings.length - 1];
+    $('studyDate').textContent = `${first.fecha} ${first.hora} → ${last.fecha} ${last.hora}`;
+  } else {
+    $('studyDate').textContent = '—';
+  }
+  $('readCount').textContent = `${readings.length} / ${totalNonHeaderLines}`;
+
+  function setLoad(barId, txtId, value) {
+    $(barId).style.width = Math.min(value, 100) + '%';
+    $(txtId).textContent = value.toFixed(1) + '%';
+  }
+  setLoad('loadDaySysBar', 'loadDaySysTxt', load.daySys);
+  setLoad('loadDayDiaBar', 'loadDayDiaTxt', load.dayDia);
+  setLoad('loadNightSysBar', 'loadNightSysTxt', load.nightSys);
+  setLoad('loadNightDiaBar', 'loadNightDiaTxt', load.nightDia);
+
+  $('dippingValue').textContent = dipping.toFixed(1);
+  const dipClass = classifyDipping(dipping);
+  const dipBadge = $('dippingBadge');
+  dipBadge.textContent = dipClass.label;
+  dipBadge.className = 'mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ' + dipClass.cls;
+
+  // Interpretación automática
+  const totalValid = readings.length || 1;
+  const abnormalPct = ((dist.g1 + dist.g2) / totalValid) * 100;
+  $('autoInterpret').textContent =
+    `Promedio 24h de ${round(stats.global.sys)}/${round(stats.global.dia)} mmHg. ` +
+    `El ${abnormalPct.toFixed(0)}% de las tomas se ubican en rango de hipertensión sistólica (≥140). ` +
+    `Patrón nocturno: ${dipClass.label} (${dipping.toFixed(1)}%). ` +
+    `Carga sistólica diurna ${load.daySys.toFixed(0)}% / nocturna ${load.nightSys.toFixed(0)}%.`;
+
+  // =========================================================================
+  //  CHART.JS — Config global
+  // =========================================================================
+  Chart.defaults.font.family = "'Inter', ui-sans-serif, system-ui, sans-serif";
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.font.size = 11;
+
+  const C = {
+    sys: '#dc2626',   // rojo — sistólica
+    dia: '#2563eb',   // azul — diastólica
+    pam: '#7c3aed',   // violeta — PAM
+    pp:  '#0d9488',   // teal — PP
+    green: '#16a34a', yellow: '#eab308', orange: '#f97316', red: '#dc2626'
+  };
+  const hexA = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  };
+
+  const labels = readings.map(r => r.hora);
+
+  const HR = '#9333ea'; // frecuencia cardíaca
+
+  // Plugin: franja gris del período nocturno (runs contiguos)
+  const nightBandPlugin = {
+    id: 'nightBand',
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      const x = scales.x;
+      const per = readings.map(r => r.period);
+      const half = per.length > 1 ? (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2 : 8;
+      let start = null;
+      ctx.save();
+      ctx.fillStyle = 'rgba(148,163,184,0.18)';
+      for (let i = 0; i <= per.length; i++) {
+        const isNight = per[i] === 'night';
+        if (isNight && start === null) start = i;
+        if ((!isNight || i === per.length) && start !== null) {
+          const l = x.getPixelForValue(start) - half;
+          const r = x.getPixelForValue(i - 1) + half;
+          ctx.fillRect(l, chartArea.top, r - l, chartArea.bottom - chartArea.top);
+          start = null;
+        }
+      }
+      ctx.restore();
+    }
+  };
+
+  // Tendencia PA vs Tiempo (estilo Contec): rango sis-dia + FC + umbrales día/noche
+  new Chart($('chartBP'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Rango', type: 'bar', data: readings.map(r => [r.dia, r.sys]),
+          backgroundColor: 'rgba(100,116,139,0.28)', barThickness: 2, order: 5,
+          grouped: false, categoryPercentage: 1, barPercentage: 1 },
+        { label: 'Umbral sistólico', type: 'line', data: readings.map(r => r.period === 'day' ? 135 : 120),
+          borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [5, 4], stepped: true,
+          pointRadius: 0, fill: false, order: 4 },
+        { label: 'Umbral diastólico', type: 'line', data: readings.map(r => r.period === 'day' ? 85 : 70),
+          borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [5, 4], stepped: true,
+          pointRadius: 0, fill: false, order: 4 },
+        { label: 'Sistólica', type: 'line', data: readings.map(r => r.sys), borderColor: C.sys,
+          backgroundColor: C.sys, borderWidth: 2, tension: 0.3, pointRadius: 1.5, pointHoverRadius: 5, order: 1 },
+        { label: 'Diastólica', type: 'line', data: readings.map(r => r.dia), borderColor: C.dia,
+          backgroundColor: C.dia, borderWidth: 2, tension: 0.3, pointRadius: 1.5, pointHoverRadius: 5, order: 2 },
+        { label: 'FC', type: 'line', data: readings.map(r => r.hr), borderColor: HR,
+          backgroundColor: HR, borderWidth: 1.5, tension: 0.3, pointRadius: 0, pointHoverRadius: 5, order: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          filter: (item) => item.dataset.label !== 'Rango' && !item.dataset.label.startsWith('Umbral'),
+          callbacks: {
+            title: (i) => `Hora ${readings[i[0].dataIndex].hora}`,
+            label: (c) => {
+              const u = c.dataset.label === 'FC' ? ' lpm' : ' mmHg';
+              return ` ${c.dataset.label}: ${c.dataset.label === 'FC' ? c.parsed.y : c.parsed.y}${u}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { grid: { color: '#f1f5f9' }, title: { display: true, text: 'mmHg  ·  lpm' }, suggestedMin: 40, suggestedMax: 200 },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 14, autoSkip: true } }
+      }
+    },
+    plugins: [nightBandPlugin]
+  });
+
+  // 2) Líneas — Hemodinámica PAM / PP
+  new Chart($('chartHemo'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'PAM', data: readings.map(r => Math.round(r.pam)), borderColor: C.pam,
+          backgroundColor: hexA(C.pam, 0.1), fill: true, borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 5 },
+        { label: 'Presión de Pulso', data: readings.map(r => r.pp), borderColor: C.pp,
+          backgroundColor: hexA(C.pp, 0.1), fill: true, borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } } },
+      scales: {
+        y: { grid: { color: '#f1f5f9' }, title: { display: true, text: 'mmHg' } },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, autoSkip: true } }
+      }
+    }
+  });
+
+  // 3) Dona — Distribución de severidad (semáforo)
+  new Chart($('chartDist'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Normal (<120)', 'Pre-HTA (120–139)', 'Grado 1 (140–159)', 'Grado 2 (≥160)'],
+      datasets: [{
+        data: [dist.normal, dist.pre, dist.g1, dist.g2],
+        backgroundColor: [C.green, C.yellow, C.orange, C.red],
+        borderColor: '#ffffff', borderWidth: 3, hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} tomas (${((c.parsed / totalValid) * 100).toFixed(1)}%)` } }
+      }
+    }
+  });
+
+  // Leyenda personalizada de la dona
+  const distItems = [
+    { name: 'Normal (<120)', val: dist.normal, color: C.green },
+    { name: 'Pre-HTA (120–139)', val: dist.pre, color: C.yellow },
+    { name: 'Grado 1 (140–159)', val: dist.g1, color: C.orange },
+    { name: 'Grado 2 (≥160)', val: dist.g2, color: C.red }
+  ];
+  $('distLegend').innerHTML = distItems.map(it => `
+    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+      <span class="flex items-center gap-2 text-sm text-slate-700">
+        <span class="h-3 w-3 rounded-full" style="background:${it.color}"></span>${it.name}
+      </span>
+      <span class="text-sm font-semibold text-slate-900">${it.val} <span class="font-normal text-slate-400">(${((it.val / totalValid) * 100).toFixed(0)}%)</span></span>
+    </div>`).join('');
+
+  // 4) Dispersión — Sistólica (Y) vs Diastólica (X)
+  new Chart($('chartScatter'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Tomas',
+        data: readings.map(r => ({ x: r.dia, y: r.sys })),
+        backgroundColor: hexA(C.sys, 0.55),
+        borderColor: '#ffffff', borderWidth: 1, pointRadius: 4, pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` PAS ${c.parsed.y} / PAD ${c.parsed.x} mmHg` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Diastólica (mmHg)' }, grid: { color: '#f1f5f9' } },
+        y: { title: { display: true, text: 'Sistólica (mmHg)' }, grid: { color: '#f1f5f9' } }
+      }
+    }
+  });
+
+  // =========================================================================
+  //  HISTOGRAMAS (barras verdes con % sobre cada barra)
+  // =========================================================================
+  // Plugin para dibujar el % encima de cada barra
+  const pctLabelPlugin = {
+    id: 'pctLabels',
+    afterDatasetsDraw(chart) {
+      if (!chart.config.options.plugins.pctLabels) return;
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const total = chart.$total || 1;
+      ctx.save();
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.textAlign = 'center';
+      meta.data.forEach((bar, i) => {
+        const v = chart.data.datasets[0].data[i];
+        if (!v) return;
+        ctx.fillText(((v / total) * 100).toFixed(1) + '%', bar.x, bar.y - 4);
+      });
+      ctx.restore();
+    }
+  };
+
+  function histogram(canvasId, values, binSize, minEdge) {
+    const bins = {};
+    values.forEach(v => { const b = Math.floor((v - minEdge) / binSize) * binSize + minEdge; bins[b] = (bins[b] || 0) + 1; });
+    const keys = Object.keys(bins).map(Number).sort((a, b) => a - b);
+    const labels = keys.map(k => k + '');
+    const data = keys.map(k => bins[k]);
+    const chart = new Chart($(canvasId), {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: '#22c55e', borderColor: '#16a34a', borderWidth: 1, borderRadius: 3, categoryPercentage: 0.98, barPercentage: 0.98 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 16 } },
+        plugins: { legend: { display: false }, pctLabels: true, tooltip: { callbacks: { title: (i) => i[0].label + '+', label: (c) => ` ${c.parsed.y} tomas (${((c.parsed.y / values.length) * 100).toFixed(1)}%)` } } },
+        scales: { y: { display: false, grid: { display: false }, beginAtZero: true }, x: { grid: { display: false }, ticks: { font: { size: 9 } } } }
+      },
+      plugins: [pctLabelPlugin]
+    });
+    chart.$total = values.length;
+    chart.update();
+  }
+  histogram('chartHistSys', readings.map(r => r.sys), 10, 80);
+  histogram('chartHistDia', readings.map(r => r.dia), 10, 40);
+  histogram('chartHistHr', readings.filter(r => r.hr).map(r => r.hr), 10, 40);
+
+  // =========================================================================
+  //  TORTAS: Encima / Normal / Bajo (rojo / verde / amarillo)
+  // =========================================================================
+  function pieClasif(canvasId, statsId, legendId, values, low, high, unit) {
+    const bajo = values.filter(v => v < low).length;
+    const normal = values.filter(v => v >= low && v <= high).length;
+    const encima = values.filter(v => v > high).length;
+    const t = values.length || 1;
+    new Chart($(canvasId), {
+      type: 'doughnut',
+      data: { labels: ['Encima', 'Normal', 'Bajo'], datasets: [{ data: [encima, normal, bajo], backgroundColor: ['#dc2626', '#22c55e', '#eab308'], borderColor: '#fff', borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} (${((c.parsed / t) * 100).toFixed(1)}%)` } } } }
+    });
+    const mx = Math.max(...values), mn = Math.min(...values), md = Math.round(values.reduce((a, b) => a + b, 0) / t);
+    $(statsId).innerHTML = `<div class="grid grid-cols-3 gap-1 text-center"><div><div class="font-semibold text-slate-900">${mx}</div><div class="text-slate-400">Máx</div></div><div><div class="font-semibold text-slate-900">${md}</div><div class="text-slate-400">Media</div></div><div><div class="font-semibold text-slate-900">${mn}</div><div class="text-slate-400">Mín</div></div></div>`;
+    const items = [
+      { n: 'Encima (&gt;' + high + ')', v: encima, c: '#dc2626' },
+      { n: 'Normal (' + low + '–' + high + ')', v: normal, c: '#22c55e' },
+      { n: 'Bajo (&lt;' + low + ')', v: bajo, c: '#eab308' }
+    ];
+    $(legendId).innerHTML = items.map(it => `<div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600"><span class="h-2.5 w-2.5 rounded-full" style="background:${it.c}"></span>${it.n}</span><span class="font-semibold text-slate-900">${it.v} (${((it.v / t) * 100).toFixed(0)}%)</span></div>`).join('');
+  }
+  pieClasif('chartPieSys', 'pieSysStats', 'pieSysLegend', readings.map(r => r.sys), 100, 135, 'mmHg');
+  pieClasif('chartPieDia', 'pieDiaStats', 'pieDiaLegend', readings.map(r => r.dia), 60, 85, 'mmHg');
+  pieClasif('chartPieHr', 'pieHrStats', 'pieHrLegend', readings.filter(r => r.hr).map(r => r.hr), 60, 100, 'lpm');
+
+  // =========================================================================
+  //  TABLA DE DATOS
+  // =========================================================================
+  $('dataTableBody').innerHTML = readings.map((r, idx) => {
+    const sysHigh = r.period === 'day' ? r.sys > 135 : r.sys > 120;
+    const diaHigh = r.period === 'day' ? r.dia > 85 : r.dia > 70;
+    const rowBg = r.period === 'night' ? 'bg-slate-100' : '';
+    const sysCell = sysHigh ? 'bg-red-100 text-red-700 font-semibold' : 'text-slate-700';
+    const diaCell = diaHigh ? 'bg-red-100 text-red-700 font-semibold' : 'text-slate-700';
+    return `<tr class="border-b border-slate-100 ${rowBg}">
+      <td class="px-2 py-1.5 text-left text-slate-400">${idx + 1}</td>
+      <td class="px-2 py-1.5 text-left text-slate-500">${r.fecha}</td>
+      <td class="px-2 py-1.5 text-left text-slate-700">${r.hora}</td>
+      <td class="px-2 py-1.5 rounded ${sysCell}">${r.sys}${sysHigh ? ' ↑' : ''}</td>
+      <td class="px-2 py-1.5 rounded ${diaCell}">${r.dia}${diaHigh ? ' ↑' : ''}</td>
+      <td class="px-2 py-1.5 text-slate-500">${Math.round(r.pam)}</td>
+      <td class="px-2 py-1.5 text-slate-500">${r.pp}</td>
+      <td class="px-2 py-1.5 text-slate-500">${r.hr ?? '—'}</td>
+    </tr>`;
+  }).join('');
+  </script>
+</body>
+</html>
